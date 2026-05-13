@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Calendar, Star, CheckCircle2, Trash2, LogOut, LayoutDashboard, Settings, Edit3, Image as ImageIcon, Plus, Save, Search, X } from 'lucide-react';
+import { User, Calendar, Trash2, LogOut, LayoutDashboard, Settings, Edit3, Image as ImageIcon, Plus, Save, Search, X } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 import { UserProfile, Appointment, AdminData, Service } from '../../types';
 
 interface AdminDashboardProps {
   adminData: AdminData | null;
   setView: (view: 'user' | 'admin') => void;
   onRefresh: () => void;
-  setUser: (user: null) => void;
+  onSignOut: () => void;
 }
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminData, setView, onRefresh, setUser }) => {
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminData, setView, onRefresh, onSignOut }) => {
   const [activeTab, setActiveTab] = useState<'records' | 'services'>('records');
   const [services, setServices] = useState<Service[]>([]);
   const [editingService, setEditingService] = useState<Service | null>(null);
@@ -23,23 +24,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminData, setVi
 
   const fetchServices = async () => {
     try {
-      const res = await fetch('/api/services');
-      const data = await res.json();
-      setServices(data);
+      const { data, error } = await supabase.from('services').select('*');
+      if (error) throw error;
+      setServices(data as Service[]);
     } catch (err) {
-      console.error("Failed to fetch services", err);
+      console.error("Error fetching services:", err);
     }
   };
 
-  const handleDeleteService = async (id: number) => {
+  const handleDeleteService = async (id: string) => {
     if (!confirm('Are you sure you want to delete this service?')) return;
     try {
-      const res = await fetch(`/api/services/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        setServices(services.filter(s => s.id !== id));
-      }
+      const { error } = await supabase.from('services').delete().eq('id', id);
+      if (error) throw error;
+      setServices(services.filter(s => s.id !== id));
+      alert("Service deleted successfully.");
     } catch (err) {
-      console.error("Error deleting service", err);
+      console.error("Error deleting service:", err);
     }
   };
 
@@ -47,48 +48,72 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminData, setVi
     const file = e.target.files?.[0];
     if (!file || !editingService) return;
 
-    setIsUploading(true);
-    const formData = new FormData();
-    formData.append('image', file);
+    if (file.size > 2 * 1024 * 1024) {
+      alert("File is too large. Max 2MB allowed.");
+      return;
+    }
 
+    setIsUploading(true);
     try {
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-      const data = await res.json();
-      if (data.imageUrl) {
-        setEditingService({ ...editingService, imageUrl: data.imageUrl });
-      }
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `services/${fileName}`;
+
+      const { data, error } = await supabase.storage
+        .from('images')
+        .upload(filePath, file);
+
+      if (error) throw error;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('images')
+        .getPublicUrl(filePath);
+      
+      setEditingService({ ...editingService, imageUrl: publicUrl });
     } catch (err) {
       console.error("Upload failed", err);
-      alert("Failed to upload image. Please try again.");
+      alert("Upload failed. Make sure you have a bucket named 'images' in Supabase.");
     } finally {
       setIsUploading(false);
+      e.target.value = '';
     }
   };
 
   const handleSaveService = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingService) return;
+
+    if (!editingService.name || !editingService.description || !editingService.price) {
+      alert("Please fill in all required fields (Name, Price, Description)");
+      return;
+    }
+
     setIsSaving(true);
-
     try {
-      const method = editingService.id ? 'PUT' : 'POST';
-      const url = editingService.id ? `/api/services/${editingService.id}` : '/api/services';
-      
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editingService)
-      });
+      const serviceData = {
+        name: editingService.name,
+        price: Number(editingService.price),
+        duration: editingService.duration,
+        category: editingService.category,
+        description: editingService.description,
+        imageUrl: editingService.imageUrl || ''
+      };
 
-      if (res.ok) {
-        await fetchServices();
-        setEditingService(null);
+      if (editingService.id) {
+        const { error } = await supabase.from('services').update(serviceData).eq('id', editingService.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('services').insert([serviceData]);
+        if (error) throw error;
       }
+
+      await fetchServices();
+      onRefresh();
+      setEditingService(null);
+      alert("Service saved successfully!");
     } catch (err) {
-      console.error("Error saving service", err);
+      console.error("Error saving service:", err);
+      alert("Failed to save service.");
     } finally {
       setIsSaving(false);
     }
@@ -121,11 +146,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminData, setVi
         </div>
 
         <button 
-          onClick={() => {
-            setView('user');
-            setUser(null);
-            localStorage.removeItem('zen_user');
-          }}
+          onClick={onSignOut}
           className="flex items-center gap-3 p-4 text-red-500 rounded-2xl hover:bg-red-50 transition-all font-bold text-[11px] uppercase tracking-widest"
         >
           <LogOut className="w-5 h-5" />
@@ -163,17 +184,43 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminData, setVi
               </button>
             )}
             {activeTab === 'services' && (
-              <button 
-                onClick={() => setEditingService({ name: '', price: 0, duration: '', category: 'Massages', desc: '', imageUrl: '' })}
-                className="bg-[#5A5A40] text-white px-8 py-3 rounded-xl text-[10px] uppercase tracking-widest font-bold shadow-lg hover:brightness-110 transition-all flex items-center gap-2"
-              >
-                <Plus className="w-4 h-4" /> Add New Service
-              </button>
+              <div className="flex gap-4">
+                <button 
+                  onClick={async () => {
+                    const initialServices = [
+                      { name: "Swedish Massage (1hr)", price: 1800, duration: "60 min", category: "Massages", description: "Relieves muscle tension and pain, supports the immune system, reduces stress and promotes relaxation." },
+                      { name: "Deep Tissue Massage (1hr)", price: 1800, duration: "60 min", category: "Massages", description: "Relieves chronic muscle tension, improves mobility and flexibility, speeds up recovery from injuries, supports emotional well-being, and enhances circulation." },
+                      { name: "Therapeutic Massage (1hr)", price: 2000, duration: "60 min", category: "Massages", description: "Reduces muscle tension and spasms, relieves chronic pain (e.g., back, neck, shoulders), enhances mobility, and aids in stress reduction." },
+                      { name: "Organic Moroccan Bath (2hr)", price: 5000, duration: "120 min", category: "Moroccan Baths", description: "18+ natural homemade ingredients with honey, milk, and oil. Includes 30 min scrub massage, deep cleansing with Moroccan soap, steam, and treatments for lips, eyes, and hair." },
+                      { name: "Special Pedicure (1hr)", price: 1800, duration: "60 min", category: "Nails & Care", description: "Soaking, exfoliation, cuticle care, shaping, and callus removal. Includes steam treatment with specialized scrubs and a relaxing hot stone massage." }
+                    ];
+                    if (confirm('Import initial spa services?')) {
+                      const { error } = await supabase.from('services').insert(initialServices);
+                      if (error) {
+                        console.error("Seed error:", error);
+                        alert("Failed to seed services.");
+                      } else {
+                        fetchServices();
+                        alert("Services seeded successfully.");
+                      }
+                    }
+                  }}
+                  className="bg-white border border-black/10 px-6 py-3 rounded-xl text-[10px] uppercase tracking-widest font-bold hover:bg-black/5 transition-all"
+                >
+                  Seed Services
+                </button>
+                <button 
+                  onClick={() => setEditingService({ name: '', price: 0, duration: '', category: 'Massages', description: '', imageUrl: '' })}
+                  className="bg-[#5A5A40] text-white px-8 py-3 rounded-xl text-[10px] uppercase tracking-widest font-bold shadow-lg hover:brightness-110 transition-all flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" /> Add New Service
+                </button>
+              </div>
             )}
           </div>
 
           {activeTab === 'records' ? (
-            <RecordsSection adminData={adminData} />
+            <RecordsSection adminData={adminData} onRefresh={onRefresh} />
           ) : (
             <ServicesSection 
               services={services} 
@@ -258,8 +305,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminData, setVi
                         rows={3}
                         required
                         className="w-full bg-black/5 border-none rounded-2xl p-4 text-sm resize-none" 
-                        value={editingService.desc} 
-                        onChange={e => setEditingService({...editingService, desc: e.target.value})}
+                        value={editingService.description} 
+                        onChange={e => setEditingService({...editingService, description: e.target.value})}
                       />
                     </div>
                     <div className="space-y-4 md:col-span-2">
@@ -336,11 +383,24 @@ const Label = ({ children }: { children: React.ReactNode }) => (
   <p className="text-[10px] uppercase tracking-widest font-bold text-black/30 ml-2">{children}</p>
 );
 
-const RecordsSection = ({ adminData }: { adminData: AdminData | null }) => (
-  <div className="space-y-12">
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-      {/* SECTION 1: RECORDS (STATS) */}
-      <Section title="Financial & Growth Records" icon={<Save className="w-5 h-5" />}>
+const RecordsSection = ({ adminData, onRefresh }: { adminData: AdminData | null, onRefresh: () => void }) => {
+  const handleDeleteAppointment = async (id: string) => {
+    if (!confirm('Cancel this appointment?')) return;
+    try {
+      const { error } = await supabase.from('appointments').delete().eq('id', id);
+      if (error) throw error;
+      onRefresh();
+    } catch (err) {
+      console.error("Error deleting appointment:", err);
+      alert("Failed to delete appointment.");
+    }
+  };
+
+  return (
+    <div className="space-y-12">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+        {/* SECTION 1: RECORDS (STATS) */}
+        <Section title="Financial & Growth Records" icon={<Save className="w-5 h-5" />}>
         <div className="space-y-6">
           {adminData && (
             <div className="grid grid-cols-1 gap-6">
@@ -401,11 +461,14 @@ const RecordsSection = ({ adminData }: { adminData: AdminData | null }) => (
               </div>
               <div className="flex justify-between items-end border-t border-black/5 pt-4">
                 <div className="space-y-1">
-                  <p className="text-xs font-bold uppercase tracking-widest text-black/60">{a.user_name}</p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-black/60">{(a as any).userName || (a as any).user_name}</p>
                   <p className="text-[10px] text-black/40 font-medium">{a.date} • {a.time}</p>
                 </div>
                 <div className="flex gap-2">
-                  <button className="p-3 text-red-500/40 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
+                  <button 
+                    onClick={() => handleDeleteAppointment(a.id)}
+                    className="p-3 text-red-500/40 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                  >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -423,8 +486,9 @@ const RecordsSection = ({ adminData }: { adminData: AdminData | null }) => (
     </div>
   </div>
 );
+};
 
-const ServicesSection = ({ services, onEdit, onDelete }: { services: Service[], onEdit: (s: Service) => void, onDelete: (id: number) => void }) => {
+const ServicesSection = ({ services, onEdit, onDelete }: { services: Service[], onEdit: (s: Service) => void, onDelete: (id: string) => void }) => {
   const [searchTerm, setSearchTerm] = useState('');
   
   const filtered = services.filter(s => 
@@ -481,7 +545,7 @@ const ServicesSection = ({ services, onEdit, onDelete }: { services: Service[], 
                 <h4 className="text-lg font-serif italic leading-tight">{s.name}</h4>
                 <p className="font-bold text-[#5A5A40]">{s.price} ETB</p>
               </div>
-              <p className="text-[11px] text-black/50 leading-relaxed line-clamp-2">{s.desc}</p>
+              <p className="text-[11px] text-black/50 leading-relaxed line-clamp-2">{s.description}</p>
               <div className="flex justify-between items-center pt-4 border-t border-black/5 text-[9px] uppercase tracking-widest font-bold text-black/30">
                 <span>{s.duration}</span>
                 <button onClick={() => onEdit(s)} className="text-[#5A5A40] opacity-0 group-hover:opacity-100 transition-opacity">Quick Edit</button>

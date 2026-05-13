@@ -1,13 +1,15 @@
 export interface UserProfile {
-  id: number;
+  id: string;
   name: string;
   email: string;
   phone: string;
+  avatarUrl?: string;
+  role?: string;
 }
 
 export interface Appointment {
-  id: number;
-  user_id: number;
+  id: string;
+  userId: string;
   date: string;
   time: string;
   service: string;
@@ -16,19 +18,19 @@ export interface Appointment {
 }
 
 export interface Service {
-  id?: number;
+  id?: string;
   name: string;
   price: number;
   duration: string;
   category: string;
-  desc: string;
+  description: string;
   imageUrl?: string;
   videoUrl?: string;
 }
 
 export interface AdminData {
   users: UserProfile[];
-  appointments: (Appointment & { user_name: string; user_email: string })[];
+  appointments: (Appointment & { userName?: string; userEmail?: string; user_name?: string; user_email?: string })[];
   stats: {
     total_revenue: number;
     total_bookings: number;

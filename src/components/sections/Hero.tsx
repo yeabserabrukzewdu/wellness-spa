@@ -30,7 +30,7 @@ export const Hero: React.FC<HeroProps> = ({ heroOpacity, heroScale, scrollToBook
           playsInline
           onCanPlayThrough={() => setVideoLoaded(true)}
           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${videoLoaded ? 'opacity-40' : 'opacity-0'} scale-105`}
-          src="https://res.cloudinary.com/dlfdjcuat/video/upload/v1778273044/weglowweb_i7m53i.mp4"
+          src="https://player.vimeo.com/external/434045526.hd.mp4?s=c1ca20f1629851722883f3e1b01633512c1251c6&profile_id=172&oauth2_token_id=57447761"
         />
 
         <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent" />

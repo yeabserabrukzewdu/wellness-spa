@@ -1,0 +1,61 @@
+{
+  "entities": {
+    "Service": {
+      "title": "Service",
+      "description": "A wellness treatment or spa service offered by the business.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "The unique name of the treatment." },
+        "price": { "type": "number", "description": "The cost in ETB." },
+        "duration": { "type": "string", "description": "How long the treatment lasts (e.g., '60 min')." },
+        "category": { "type": "string", "description": "Grouping for the service (Massages, Baths, etc.)" },
+        "description": { "type": "string", "description": "Detailed description of the service benefits." },
+        "imageUrl": { "type": "string", "description": "URL to the service image." }
+      },
+      "required": ["name", "price", "duration", "category", "description"]
+    },
+    "Appointment": {
+      "title": "Appointment",
+      "description": "A scheduled service booking for a specific user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "UID of the user who booked." },
+        "userName": { "type": "string", "description": "Name of the user." },
+        "userEmail": { "type": "string", "description": "Email of the user." },
+        "userPhone": { "type": "string", "description": "Contact number." },
+        "date": { "type": "string", "description": "Booking date (YYYY-MM-DD)." },
+        "time": { "type": "string", "description": "Booking time (HH:mm)." },
+        "service": { "type": "string", "description": "Name of the booked service." },
+        "price": { "type": "number", "description": "Price at time of booking." },
+        "status": { "type": "string", "enum": ["confirmed", "cancelled"], "description": "Current state of the booking." }
+      },
+      "required": ["userId", "date", "time", "service", "price", "status"]
+    },
+    "User": {
+      "title": "User",
+      "description": "Detailed profile information for a spa client.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "avatarUrl": { "type": "string", "description": "URL to the user's profile picture." },
+        "role": { "type": "string", "enum": ["admin", "customer"], "description": "Access level." }
+      }
+    }
+  },
+  "firestore": {
+    "services/{serviceId}": {
+      "schema": "Service",
+      "description": "Collection of all treatments offered."
+    },
+    "appointments/{appointmentId}": {
+      "schema": "Appointment",
+      "description": "All client bookings."
+    },
+    "users/{userId}": {
+      "schema": "User",
+      "description": "Registered user profiles and settings."
+    }
+  }
+}

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react';
+import { supabase } from './lib/supabase';
 import { Header } from './components/layout/Header';
 import { Hero } from './components/sections/Hero';
 import { About } from './components/sections/About';
-import { Services} from './components/sections/Services';
+import { Services } from './components/sections/Services';
 import { WhyChooseUs } from './components/sections/WhyChooseUs';
 import { Gallery } from './components/sections/Gallery';
 import { Testimonials } from './components/sections/Testimonials';
@@ -13,7 +14,7 @@ import { AdminDashboard } from './components/admin/AdminDashboard';
 import { AdminLogin } from './components/admin/AdminLogin';
 import { FloatingContact } from './components/ui/FloatingContact';
 import { UserProfile, Appointment, AdminData, Service } from './types';
-import { SERVICES } from './constants';
+import { ProfileModal } from './components/ui/ProfileModal';
 
 export default function App() {
   // Authentication & View state
@@ -21,9 +22,27 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState<'user'|'admin'>('user');
   const [isAdminMode, setIsAdminMode] = useState(false);
-  const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [services, setServices] = useState<Service[]>([]);
+
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      localStorage.removeItem('admin_session');
+      setUser(null);
+      setIsAdminMode(false);
+      setShowProfile(false);
+      setView('user');
+    } catch (error) {
+      console.error("Sign out error:", error);
+    }
+  };
+
+  const updateUserInfo = (updated: UserProfile) => {
+    setUser(updated);
+  };
 
   // Booking Form State
   const [bookingData, setBookingData] = useState({
@@ -45,43 +64,103 @@ export default function App() {
   const heroScale = useTransform(scrollYProgress, [0, 0.2], [1, 0.95]);
 
   useEffect(() => {
-    fetchServices();
-    const savedUser = localStorage.getItem('zen_user');
-    if (savedUser) {
-      const parsedUser = JSON.parse(savedUser);
-      setUser(parsedUser);
-      if (parsedUser.email === 'admin@weglow.com') {
-        setIsAdminMode(true);
-      }
+    // 1. Auth Listener
+    const hasAdminSession = localStorage.getItem('admin_session') === 'active';
+    if (hasAdminSession) {
+      setIsAdminMode(true);
+      setUser({ id: 'admin', name: 'Master Admin', email: 'admin@weglow.com', phone: '', role: 'admin' });
     }
-  }, []);
 
-  const fetchServices = async () => {
-    try {
-      const res = await fetch('/api/services');
-      const data = await res.json();
-      setServices(data);
-      if (data.length > 0 && !bookingData.service) {
-        setBookingData(prev => ({ ...prev, service: data[0].name }));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const sbUser = session?.user;
+      
+      if (sbUser) {
+        try {
+          const { data: userData, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', sbUser.id)
+            .single();
+
+          if (userData) {
+            setUser(userData as UserProfile);
+            if (userData.role === 'admin' || sbUser.email === 'yeabserabruk1234@gmail.com') {
+              setIsAdminMode(true);
+            }
+          } else {
+            // First time login - creating profile
+            const newUserData = {
+              id: sbUser.id,
+              name: sbUser.user_metadata?.full_name || '',
+              email: sbUser.email || '',
+              phone: '',
+              role: sbUser.email === 'yeabserabruk1234@gmail.com' ? 'admin' : 'customer'
+            };
+            await supabase.from('users').insert([newUserData]);
+            setUser(newUserData as UserProfile);
+            if (newUserData.role === 'admin') setIsAdminMode(true);
+          }
+        } catch (error) {
+          console.error("User profile error:", error);
+        }
+      } else {
+        if (localStorage.getItem('admin_session') !== 'active') {
+          setUser(null);
+          setIsAdminMode(false);
+        }
       }
-    } catch (err) {
-      console.error("Failed to fetch services", err);
-    }
-  };
+    });
+
+    // 2. Services Real-time Listener
+    const channel = supabase
+      .channel('services_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'services' }, async () => {
+        const { data } = await supabase.from('services').select('*');
+        if (data) setServices(data as Service[]);
+      })
+      .subscribe();
+
+    const fetchInitialServices = async () => {
+      const { data } = await supabase.from('services').select('*');
+      if (data) {
+        setServices(data as Service[]);
+        if (data.length > 0 && !bookingData.service) {
+          setBookingData(prev => ({ ...prev, service: data[0].name }));
+        }
+      }
+    };
+    fetchInitialServices();
+
+    return () => {
+      subscription.unsubscribe();
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const fetchAdminData = async () => {
     try {
-      const [usersRes, appsRes, statsRes] = await Promise.all([
-        fetch('/api/admin/users'),
-        fetch('/api/admin/appointments'),
-        fetch('/api/admin/stats')
+      setLoading(true);
+      const [usersRes, appointmentsRes] = await Promise.all([
+        supabase.from('users').select('*'),
+        supabase.from('appointments').select('*').order('date', { ascending: false })
       ]);
-      const users = await usersRes.json();
-      const appointments = await appsRes.json();
-      const stats = await statsRes.json();
-      setAdminData({ users, appointments, stats });
+
+      const users = (usersRes.data || []) as UserProfile[];
+      const appointments = (appointmentsRes.data || []) as any[];
+
+      const total_revenue = appointments.reduce((acc, a) => acc + (a.price || 0), 0);
+      const total_bookings = appointments.length;
+      const total_customers = users.length;
+
+      setAdminData({ 
+        users, 
+        appointments, 
+        stats: { total_revenue, total_bookings, total_customers } 
+      });
     } catch (error) {
-      console.error("Failed to fetch admin data", error);
+      console.error("Admin data error:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -95,53 +174,99 @@ export default function App() {
 
   const handleBooking = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      alert("Please login to book a service.");
+      setShowLoginModal(true); 
+      return;
+    }
     
+    setLoading(true);
     try {
       const selectedService = services.find(s => s.name === bookingData.service);
-      const payload = { ...bookingData, price: selectedService?.price || 0 };
+      const appointmentData = {
+        userId: session.user.id,
+        userName: bookingData.name,
+        userEmail: bookingData.email,
+        userPhone: bookingData.phone,
+        date: bookingData.date,
+        time: bookingData.time,
+        service: bookingData.service,
+        price: selectedService?.price || 0,
+        status: 'confirmed'
+      };
 
-      const response = await fetch('/api/appointments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      await supabase.from('appointments').insert([appointmentData]);
       
-      const data = await response.json();
-      if (data.user) {
-        setUser(data.user);
-        localStorage.setItem('zen_user', JSON.stringify(data.user));
+      // Update phone in user profile if changed
+      if (user && user.phone !== bookingData.phone) {
+        await supabase.from('users').update({ phone: bookingData.phone }).eq('id', session.user.id);
       }
-      
+
       alert(`Serenity Reserved! Our concierge will contact you soon.`);
       setBookingData({ ...bookingData, name: '', email: '', phone: '', date: '', time: '' });
     } catch (error) {
-      console.error(error);
+      console.error("Booking error:", error);
       alert("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAdminLogin = (success: boolean) => {
+  const handleAdminLogin = (success: boolean, type?: 'google' | 'admin') => {
     if (success) {
-      setView('admin');
-      setIsAdminMode(true);
-      setShowAdminLogin(false);
+      if (type === 'admin') {
+        setIsAdminMode(true);
+        setUser({ id: 'admin', name: 'Master Admin', email: 'admin@weglow.com', phone: '', role: 'admin' });
+        setView('admin');
+        localStorage.setItem('admin_session', 'active');
+      }
+      setShowLoginModal(false);
     }
   };
 
   const handleRefreshAll = async () => {
-    await Promise.all([fetchAdminData(), fetchServices()]);
+    if (view === 'admin') await fetchAdminData();
+  };
+
+  const handleAdminClick = () => {
+    if (user && isAdminMode) {
+      setView('admin');
+    } else {
+      setShowLoginModal(true);
+    }
   };
 
   if (view === 'admin') {
+    if (!user || !isAdminMode) {
+      return (
+        <div className="min-h-screen bg-[#FAF9F6] flex flex-col items-center justify-center p-8 text-center">
+          <h2 className="text-3xl font-serif italic mb-4">Unauthorized Access</h2>
+          <p className="text-sm text-black/40 mb-8 max-w-md">You do not have administrative privileges. Please log in with an authorized account or return to the main page.</p>
+          <div className="flex gap-4">
+            <button 
+              onClick={() => setView('user')}
+              className="px-8 py-3 bg-white border border-black/10 rounded-xl text-[10px] uppercase tracking-widest font-bold hover:bg-black/5"
+            >
+              Back to Spa
+            </button>
+            <button 
+              onClick={() => setShowLoginModal(true)}
+              className="px-8 py-3 bg-[#5A5A40] text-white rounded-xl text-[10px] uppercase tracking-widest font-bold shadow-lg"
+            >
+              Login
+            </button>
+          </div>
+          {showLoginModal && <AdminLogin onLogin={handleAdminLogin} onClose={() => setShowLoginModal(false)} />}
+        </div>
+      );
+    }
     return (
       <AdminDashboard 
         adminData={adminData} 
         setView={setView} 
         onRefresh={handleRefreshAll} 
-        setUser={setUser} 
+        onSignOut={handleSignOut} 
       />
     );
   }
@@ -159,6 +284,8 @@ export default function App() {
           setIsMobileMenuOpen={setIsMobileMenuOpen} 
           scrollToBooking={scrollToBooking} 
           services={services}
+          user={user}
+          onProfileClick={() => user ? setShowProfile(true) : setShowLoginModal(true)}
         />
 
         <Hero 
@@ -169,7 +296,13 @@ export default function App() {
 
         <About />
 
-        <Services />
+        <Services 
+          services={services}
+          onReserve={(serviceName) => {
+            setBookingData({ ...bookingData, service: serviceName });
+            scrollToBooking();
+          }} 
+        />
 
         <WhyChooseUs />
 
@@ -186,13 +319,21 @@ export default function App() {
           services={services}
         />
 
-        <Footer onAdminClick={() => setShowAdminLogin(true)} />
+        <Footer onAdminClick={handleAdminClick} />
 
         <AnimatePresence>
-          {showAdminLogin && (
+          {showLoginModal && (
             <AdminLogin 
               onLogin={handleAdminLogin} 
-              onClose={() => setShowAdminLogin(false)} 
+              onClose={() => setShowLoginModal(false)} 
+            />
+          )}
+          {showProfile && (
+            <ProfileModal 
+              user={user}
+              onClose={() => setShowProfile(false)}
+              onUpdate={updateUserInfo}
+              onSignOut={handleSignOut}
             />
           )}
         </AnimatePresence>

@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Menu, X, Search, ChevronRight } from 'lucide-react';
-import { Service } from '../../types';
+import { Menu, X, Search, ChevronRight, User as UserIcon } from 'lucide-react';
+import { Service, UserProfile } from '../../types';
 
 interface HeaderProps {
   isMobileMenuOpen: boolean;
   setIsMobileMenuOpen: (open: boolean) => void;
   scrollToBooking: () => void;
   services: Service[];
+  user: UserProfile | null;
+  onProfileClick: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ isMobileMenuOpen, setIsMobileMenuOpen, scrollToBooking, services }) => {
+export const Header: React.FC<HeaderProps> = ({ isMobileMenuOpen, setIsMobileMenuOpen, scrollToBooking, services, user, onProfileClick }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -25,7 +27,7 @@ export const Header: React.FC<HeaderProps> = ({ isMobileMenuOpen, setIsMobileMen
 
   const filteredServices = services.filter(s => 
     s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.desc.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    s.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
     s.category.toLowerCase().includes(searchQuery.toLowerCase())
   ).slice(0, 5);
 
@@ -39,17 +41,16 @@ export const Header: React.FC<HeaderProps> = ({ isMobileMenuOpen, setIsMobileMen
   };
 
   return (
- <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${isScrolled || isSearchOpen ? 'bg-white/90 backdrop-blur-md py-2 shadow-sm' : 'bg-transparent py-2'}`}>
-      <div className="max-w-7xl mx-auto px-0 flex items-center justify-between">
-       
-             <img 
-    src="./logo.png"  // Update this path to match your file location
-    alt="My Logo"
-    width="100"
-    height="100"
-    style={{ objectFit: 'contain' }}  // Ensures it scales nicely without distortion
-  /> 
-  
+    <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${isScrolled || isSearchOpen ? 'bg-white/90 backdrop-blur-md py-4 shadow-sm' : 'bg-transparent py-8'}`}>
+      <div className="max-w-7xl mx-auto px-6 md:px-12 flex items-center justify-between">
+        {/* Logo */}
+        <div 
+          className={`text-2xl font-serif italic tracking-tight cursor-pointer transition-colors duration-500 ${isScrolled || isSearchOpen ? 'text-black' : 'text-white'}`}
+          onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})}
+        >
+          WE GLOW
+        </div>
+        
         {/* Center Navigation */}
         <div className={`hidden md:flex items-center gap-10 text-[11px] uppercase tracking-[0.2em] font-semibold transition-colors duration-500 ${isScrolled || isSearchOpen ? 'text-black/60' : 'text-white/80'}`}>
           <a href="#about" className="hover:text-[#5A5A40] transition-colors">Home</a>
@@ -68,6 +69,22 @@ export const Header: React.FC<HeaderProps> = ({ isMobileMenuOpen, setIsMobileMen
             >
               {isSearchOpen ? <X className="w-5 h-5" /> : <Search className="w-5 h-5" />}
             </button>
+            
+            <button 
+              onClick={onProfileClick}
+              className="flex items-center gap-3 hover:scale-105 transition-all p-2 bg-black/5 hover:bg-black/10 rounded-full border border-white/10"
+            >
+              <div className="w-6 h-6 rounded-full bg-[#5A5A40] flex items-center justify-center overflow-hidden border border-white/20">
+                {user?.avatarUrl ? (
+                  <img src={user.avatarUrl} className="w-full h-full object-cover" alt="" />
+                ) : (
+                  <UserIcon className="w-3 h-3 text-white" />
+                )}
+              </div>
+              <span className="text-[9px] uppercase tracking-widest font-bold hidden lg:inline-block">
+                {user ? user.name.split(' ')[0] : 'Profile'}
+              </span>
+            </button>
           </div>
           
           <button 
@@ -78,6 +95,7 @@ export const Header: React.FC<HeaderProps> = ({ isMobileMenuOpen, setIsMobileMen
           </button>
         </div>
       </div>
+
       {/* Search Overlay */}
       <AnimatePresence>
         {isSearchOpen && (
