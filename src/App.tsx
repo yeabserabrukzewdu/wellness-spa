@@ -31,6 +31,7 @@ export default function App() {
     try {
       await supabase.auth.signOut();
       localStorage.removeItem('admin_session');
+      sessionStorage.removeItem('admin_authenticated');
       setUser(null);
       setIsAdminMode(false);
       setShowProfile(false);
@@ -121,12 +122,17 @@ export default function App() {
       .subscribe();
 
     const fetchInitialServices = async () => {
-      const { data } = await supabase.from('services').select('*');
-      if (data) {
-        setServices(data as Service[]);
-        if (data.length > 0 && !bookingData.service) {
-          setBookingData(prev => ({ ...prev, service: data[0].name }));
+      try {
+        const { data, error } = await supabase.from('services').select('*');
+        if (error) throw error;
+        if (data) {
+          setServices(data as Service[]);
+          if (data.length > 0 && !bookingData.service) {
+            setBookingData(prev => ({ ...prev, service: data[0].name }));
+          }
         }
+      } catch (error) {
+        console.error("Critical error fetching services:", error);
       }
     };
     fetchInitialServices();
@@ -185,10 +191,10 @@ export default function App() {
     try {
       const selectedService = services.find(s => s.name === bookingData.service);
       const appointmentData = {
-        userId: session.user.id,
-        userName: bookingData.name,
-        userEmail: bookingData.email,
-        userPhone: bookingData.phone,
+        user_id: session.user.id,
+        user_name: bookingData.name,
+        user_email: bookingData.email,
+        user_phone: bookingData.phone,
         date: bookingData.date,
         time: bookingData.time,
         service: bookingData.service,
@@ -230,43 +236,17 @@ export default function App() {
   };
 
   const handleAdminClick = () => {
-    if (user && isAdminMode) {
-      setView('admin');
-    } else {
-      setShowLoginModal(true);
-    }
+    setView('admin');
   };
 
   if (view === 'admin') {
-    if (!user || !isAdminMode) {
-      return (
-        <div className="min-h-screen bg-[#FAF9F6] flex flex-col items-center justify-center p-8 text-center">
-          <h2 className="text-3xl font-serif italic mb-4">Unauthorized Access</h2>
-          <p className="text-sm text-black/40 mb-8 max-w-md">You do not have administrative privileges. Please log in with an authorized account or return to the main page.</p>
-          <div className="flex gap-4">
-            <button 
-              onClick={() => setView('user')}
-              className="px-8 py-3 bg-white border border-black/10 rounded-xl text-[10px] uppercase tracking-widest font-bold hover:bg-black/5"
-            >
-              Back to Spa
-            </button>
-            <button 
-              onClick={() => setShowLoginModal(true)}
-              className="px-8 py-3 bg-[#5A5A40] text-white rounded-xl text-[10px] uppercase tracking-widest font-bold shadow-lg"
-            >
-              Login
-            </button>
-          </div>
-          {showLoginModal && <AdminLogin onLogin={handleAdminLogin} onClose={() => setShowLoginModal(false)} />}
-        </div>
-      );
-    }
     return (
       <AdminDashboard 
         adminData={adminData} 
         setView={setView} 
         onRefresh={handleRefreshAll} 
         onSignOut={handleSignOut} 
+        onLoginSuccess={handleAdminLogin}
       />
     );
   }
