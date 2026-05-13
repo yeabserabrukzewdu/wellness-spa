@@ -96,9 +96,9 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, index, onReserve }) 
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ delay: index * 0.05 }}
-      className="group"
+      className="group relative"
     >
-      <div className="relative aspect-[4/5] rounded-[2rem] overflow-hidden mb-6 bg-[#F5F5F0]">
+      <div className="relative aspect-[4/5] rounded-[2.5rem] overflow-hidden mb-6 bg-[#F5F5F0] border border-black/[0.03] transition-all duration-500 group-hover:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.15)] group-hover:-translate-y-2">
         {service.video_url ? (
            <video 
              src={service.video_url} 
@@ -109,48 +109,56 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, index, onReserve }) 
           <img 
             src={service.image_url || `https://picsum.photos/seed/${service.name}/800/1000`} 
             alt={service.name}
-            className="w-full h-full object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-110 opacity-90 group-hover:opacity-100"
+            className="w-full h-full object-cover transition-transform duration-[1.5s] cubic-bezier(0.22, 1, 0.36, 1) group-hover:scale-110 opacity-90 group-hover:opacity-100"
             referrerPolicy="no-referrer"
           />
         )}
         
-        {/* Play Icon if video exists */}
-        {service.video_url && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none group-hover:opacity-0 transition-opacity duration-500">
-             <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30">
-               <Play className="w-5 h-5 text-white fill-white ml-0.5" />
-             </div>
-          </div>
-        )}
-
-        {/* Price Reveal & Info */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 flex flex-col justify-end p-8">
-          <p className="text-white/80 text-xs leading-relaxed mb-4 italic line-clamp-4 font-light">
-            {service.description}
-          </p>
-          <div className="flex items-center justify-between">
-            <span className="text-white font-serif italic text-2xl">{service.price} ETB</span>
-            <span className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[9px] text-white uppercase tracking-widest font-bold">
-              {service.duration}
-            </span>
-          </div>
-        </div>
-
-        <div className="absolute top-6 right-6 opacity-100 group-hover:opacity-0 transition-opacity duration-500">
-          <div className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest text-[#5A5A40] shadow-sm">
+        {/* Floating Price Tag */}
+        <div className="absolute top-6 right-6 z-10">
+          <div className="bg-white/90 backdrop-blur-md px-5 py-2.5 rounded-2xl text-[11px] font-bold uppercase tracking-widest text-[#5A5A40] shadow-xl border border-white/20">
             {service.price} ETB
           </div>
         </div>
+
+        {/* Hover Overlay Content */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 flex flex-col justify-end p-8">
+          <motion.div 
+            initial={{ y: 20, opacity: 0 }}
+            whileInView={{ y: 0, opacity: 1 }}
+            className="space-y-4"
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-[1px] bg-white/40" />
+              <span className="text-[9px] text-white/60 uppercase tracking-[0.3em] font-bold">{service.category}</span>
+            </div>
+            <p className="text-white/80 text-xs leading-relaxed italic line-clamp-4 font-light">
+              {service.description}
+            </p>
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                onReserve(service.name);
+              }}
+              className="w-full bg-white text-black py-4 rounded-2xl text-[10px] uppercase tracking-[0.2em] font-bold shadow-2xl hover:bg-[#5A5A40] hover:text-white transition-all transform hover:scale-[1.02]"
+            >
+              Reserve Session
+            </button>
+          </motion.div>
+        </div>
       </div>
 
-      <div className="px-1">
-        <h4 className="text-xl font-serif italic mb-2 group-hover:text-[#5A5A40] transition-colors">{service.name}</h4>
+      <div className="px-2 transition-transform duration-500 group-hover:translate-x-2">
+        <div className="flex items-center justify-between mb-2">
+          <h4 className="text-xl font-serif italic text-black/80">{service.name}</h4>
+          <span className="text-[9px] font-bold text-black/20 uppercase tracking-widest">{service.duration}</span>
+        </div>
         <button 
           onClick={() => onReserve(service.name)}
-          className="text-[10px] font-bold uppercase tracking-[0.2em] text-black/40 group-hover:text-[#5A5A40] flex items-center gap-2 transition-all"
+          className="text-[10px] font-bold uppercase tracking-[0.2em] text-black/30 group-hover:text-[#5A5A40] flex items-center gap-3 transition-all"
         >
-          Reserve Now
-          <div className="w-4 h-[1px] bg-black/20 group-hover:bg-[#5A5A40] group-hover:w-8 transition-all" />
+          View Details
+          <div className="w-6 h-[1px] bg-black/10 group-hover:bg-[#5A5A40] group-hover:w-12 transition-all" />
         </button>
       </div>
     </motion.div>
