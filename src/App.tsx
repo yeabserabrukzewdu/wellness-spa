@@ -180,18 +180,12 @@ export default function App() {
 
   const handleBooking = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) {
-      alert("Please login to book a service.");
-      setShowLoginModal(true); 
-      return;
-    }
     
     setLoading(true);
     try {
       const selectedService = services.find(s => s.name === bookingData.service);
       const appointmentData = {
-        user_id: session.user.id,
+        user_id: user?.id || null, // Allow null for guests
         user_name: bookingData.name,
         user_email: bookingData.email,
         user_phone: bookingData.phone,
@@ -204,13 +198,15 @@ export default function App() {
 
       await supabase.from('appointments').insert([appointmentData]);
       
-      // Update phone in user profile if changed
-      if (user && user.phone !== bookingData.phone) {
+      // Update phone in user profile if changed and logged in
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user && user && user.phone !== bookingData.phone) {
         await supabase.from('users').update({ phone: bookingData.phone }).eq('id', session.user.id);
       }
 
       alert(`Serenity Reserved! Our concierge will contact you soon.`);
       setBookingData({ ...bookingData, name: '', email: '', phone: '', date: '', time: '' });
+      setShowBookingModal(false);
     } catch (error) {
       console.error("Booking error:", error);
       alert("Something went wrong. Please try again.");
