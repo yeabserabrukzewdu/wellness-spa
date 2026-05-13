@@ -7,8 +7,8 @@ Go to [Supabase](https://supabase.com/) and create a new project.
 Run the following SQL in your Supabase SQL Editor to create the necessary tables:
 
 ```sql
--- Create Users Table
-CREATE TABLE users (
+-- Create Users Table (with IF NOT EXISTS)
+CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY REFERENCES auth.users ON DELETE CASCADE,
   name TEXT,
   email TEXT UNIQUE,
@@ -19,7 +19,7 @@ CREATE TABLE users (
 );
 
 -- Create Services Table
-CREATE TABLE services (
+CREATE TABLE IF NOT EXISTS services (
   id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
   name TEXT NOT NULL,
   price NUMERIC NOT NULL,
@@ -31,7 +31,7 @@ CREATE TABLE services (
 );
 
 -- Create Appointments Table
-CREATE TABLE appointments (
+CREATE TABLE IF NOT EXISTS appointments (
   id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
   user_id UUID REFERENCES auth.users ON DELETE CASCADE,
   user_name TEXT,
@@ -51,20 +51,31 @@ ALTER TABLE services ENABLE ROW LEVEL SECURITY;
 ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
 
 -- Policies for Users
+DROP POLICY IF EXISTS "Users can view their own profile" ON users;
 CREATE POLICY "Users can view their own profile" ON users FOR SELECT USING (auth.uid() = id);
+
+DROP POLICY IF EXISTS "Users can update their own profile" ON users;
 CREATE POLICY "Users can update their own profile" ON users FOR UPDATE USING (auth.uid() = id);
+
+DROP POLICY IF EXISTS "Admins can view all profiles" ON users;
 CREATE POLICY "Admins can view all profiles" ON users FOR SELECT USING (
   EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
 );
 
 -- Policies for Services
+DROP POLICY IF EXISTS "Anyone can view services" ON services;
 CREATE POLICY "Anyone can view services" ON services FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Admins can manage services" ON services;
 CREATE POLICY "Admins can manage services" ON services FOR ALL USING (
   EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
 );
 
 -- Policies for Appointments
+DROP POLICY IF EXISTS "Users can manage their own appointments" ON appointments;
 CREATE POLICY "Users can manage their own appointments" ON appointments FOR ALL USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Admins can manage all appointments" ON appointments;
 CREATE POLICY "Admins can manage all appointments" ON appointments FOR ALL USING (
   EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
 );
