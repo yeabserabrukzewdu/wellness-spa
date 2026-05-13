@@ -17,10 +17,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminData, setVi
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+
+  // HARDCODED ADMIN CREDENTIALS (As requested: "username and password which will be set in the admin dashboard component")
+  const ADMIN_USERNAME = "admin";
+  const ADMIN_PASSWORD = "password123";
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (loginForm.username === ADMIN_USERNAME && loginForm.password === ADMIN_PASSWORD) {
+      setIsAuthenticated(true);
+    } else {
+      alert("Invalid credentials. Please contact developer.");
+    }
+  };
 
   useEffect(() => {
-    fetchServices();
-  }, []);
+    if (isAuthenticated) {
+      fetchServices();
+    }
+  }, [isAuthenticated]);
 
   const fetchServices = async () => {
     try {
@@ -63,16 +80,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminData, setVi
         .from('images')
         .upload(filePath, file);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase Storage Error Raw:", error);
+        throw error;
+      }
 
       const { data: { publicUrl } } = supabase.storage
         .from('images')
         .getPublicUrl(filePath);
       
       setEditingService({ ...editingService, image_url: publicUrl });
-    } catch (err) {
-      console.error("Upload failed", err);
-      alert("Upload failed. Make sure you have a bucket named 'images' in Supabase.");
+    } catch (err: any) {
+      console.error("Upload failed details:", err);
+      const errorMessage = err?.message || "Unknown error";
+      alert(`Upload failed: ${errorMessage}\n\nMake sure:\n1. A bucket named 'images' exists.\n2. It's set to 'Public' in Supabase.\n3. You've added Storage Policies (RLS) to allow uploads.`);
     } finally {
       setIsUploading(false);
       e.target.value = '';
@@ -119,6 +140,68 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminData, setVi
     }
   };
 
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center p-6 bg-[url('https://images.unsplash.com/photo-1540555700478-4be289aefcc9?q=80&w=2000')] bg-cover bg-center">
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-md" />
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative w-full max-w-md bg-white rounded-[40px] p-12 shadow-2xl space-y-8"
+        >
+          <div className="text-center space-y-2">
+            <h2 className="text-3xl font-serif italic">Management Login</h2>
+            <p className="text-[10px] uppercase tracking-widest font-bold text-black/30">Secure Terminal Access</p>
+          </div>
+          
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div className="space-y-4">
+              <Label>Username</Label>
+              <input 
+                type="text" 
+                required
+                className="w-full bg-black/5 border-none rounded-2xl p-4 text-sm" 
+                value={loginForm.username}
+                onChange={e => setLoginForm({...loginForm, username: e.target.value})}
+                placeholder="Enter username"
+              />
+            </div>
+            <div className="space-y-4">
+              <Label>Password</Label>
+              <input 
+                type="password" 
+                required
+                className="w-full bg-black/5 border-none rounded-2xl p-4 text-sm" 
+                value={loginForm.password}
+                onChange={e => setLoginForm({...loginForm, password: e.target.value})}
+                placeholder="••••••••"
+              />
+            </div>
+            <button 
+              type="submit"
+              className="w-full bg-[#141414] text-white py-5 rounded-[24px] text-[12px] uppercase tracking-widest font-bold hover:brightness-125 transition-all shadow-xl"
+            >
+              Enter Dashboard
+            </button>
+            <button 
+              onClick={() => setView('user')}
+              type="button"
+              className="w-full text-black/40 py-2 text-[10px] uppercase tracking-widest font-bold hover:text-black transition-all"
+            >
+              Back to Website
+            </button>
+          </form>
+        </motion.div>
+      </div>
+    );
+  }
+
+  const handleSignOut = () => {
+    setIsAuthenticated(false);
+    setLoginForm({ username: '', password: '' });
+    onSignOut();
+  };
+
   return (
     <div className="flex min-h-screen bg-[#F5F5F0]">
       {/* Sidebar Navigation */}
@@ -146,7 +229,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminData, setVi
         </div>
 
         <button 
-          onClick={onSignOut}
+          onClick={handleSignOut}
           className="flex items-center gap-3 p-4 text-red-500 rounded-2xl hover:bg-red-50 transition-all font-bold text-[11px] uppercase tracking-widest"
         >
           <LogOut className="w-5 h-5" />
@@ -188,11 +271,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminData, setVi
                 <button 
                   onClick={async () => {
                     const initialServices = [
-                      { name: "Swedish Massage (1hr)", price: 1800, duration: "60 min", category: "Massages", description: "Relieves muscle tension and pain, supports the immune system, reduces stress and promotes relaxation." },
-                      { name: "Deep Tissue Massage (1hr)", price: 1800, duration: "60 min", category: "Massages", description: "Relieves chronic muscle tension, improves mobility and flexibility, speeds up recovery from injuries, supports emotional well-being, and enhances circulation." },
-                      { name: "Therapeutic Massage (1hr)", price: 2000, duration: "60 min", category: "Massages", description: "Reduces muscle tension and spasms, relieves chronic pain (e.g., back, neck, shoulders), enhances mobility, and aids in stress reduction." },
-                      { name: "Organic Moroccan Bath (2hr)", price: 5000, duration: "120 min", category: "Moroccan Baths", description: "18+ natural homemade ingredients with honey, milk, and oil. Includes 30 min scrub massage, deep cleansing with Moroccan soap, steam, and treatments for lips, eyes, and hair." },
-                      { name: "Special Pedicure (1hr)", price: 1800, duration: "60 min", category: "Nails & Care", description: "Soaking, exfoliation, cuticle care, shaping, and callus removal. Includes steam treatment with specialized scrubs and a relaxing hot stone massage." }
+                      { name: "Swedish Massage (1hr)", price: 1800, duration: "60 min", category: "Massages", description: "Relieves muscle tension and pain, supports the immune system, reduces stress and promotes relaxation.", image_url: "https://images.unsplash.com/photo-1544161515-436cefs61f01?q=80&w=800" },
+                      { name: "Deep Tissue Massage (1hr)", price: 1800, duration: "60 min", category: "Massages", description: "Relieves chronic muscle tension, improves mobility and flexibility, speeds up recovery from injuries, supports emotional well-being, and enhances circulation.", image_url: "https://images.unsplash.com/photo-1519823551278-64ac92734fb1?q=80&w=800" },
+                      { name: "Therapeutic Massage (1hr)", price: 2000, duration: "60 min", category: "Massages", description: "Reduces muscle tension and spasms, relieves chronic pain (e.g., back, neck, shoulders), enhances mobility, and aids in stress reduction.", image_url: "https://images.unsplash.com/photo-1515377905703-c4788e51af15?q=80&w=800" },
+                      { name: "Organic Moroccan Bath (2hr)", price: 5000, duration: "120 min", category: "Moroccan Baths", description: "18+ natural homemade ingredients with honey, milk, and oil. Includes 30 min scrub massage, deep cleansing with Moroccan soap, steam, and treatments for lips, eyes, and hair.", image_url: "https://images.unsplash.com/photo-1540555700478-4be289aefcc9?q=80&w=800" },
+                      { name: "Special Pedicure (1hr)", price: 1800, duration: "60 min", category: "Nails & Care", description: "Soaking, exfoliation, cuticle care, shaping, and callus removal. Includes steam treatment with specialized scrubs and a relaxing hot stone massage.", image_url: "https://images.unsplash.com/photo-1519014816548-bf5fe059798b?q=80&w=800" }
                     ];
                     if (confirm('Import initial spa services?')) {
                       const { error } = await supabase.from('services').insert(initialServices);
@@ -207,7 +290,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminData, setVi
                   }}
                   className="bg-white border border-black/10 px-6 py-3 rounded-xl text-[10px] uppercase tracking-widest font-bold hover:bg-black/5 transition-all"
                 >
-                  seed Services
+                  Seed Services
                 </button>
                 <button 
                   onClick={() => setEditingService({ name: '', price: 0, duration: '', category: 'Massages', description: '', image_url: '' })}
@@ -461,7 +544,7 @@ const RecordsSection = ({ adminData, onRefresh }: { adminData: AdminData | null,
               </div>
               <div className="flex justify-between items-end border-t border-black/5 pt-4">
                 <div className="space-y-1">
-                  <p className="text-xs font-bold uppercase tracking-widest text-black/60">{(a as any).userName || (a as any).user_name}</p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-black/60">{a.user_name || a.userName || 'Anonymous Client'}</p>
                   <p className="text-[10px] text-black/40 font-medium">{a.date} • {a.time}</p>
                 </div>
                 <div className="flex gap-2">
