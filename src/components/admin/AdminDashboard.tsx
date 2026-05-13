@@ -9,27 +9,42 @@ interface AdminDashboardProps {
   setView: (view: 'user' | 'admin') => void;
   onRefresh: () => void;
   onSignOut: () => void;
+  onLoginSuccess?: (success: boolean, type?: 'google' | 'admin') => void;
 }
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminData, setView, onRefresh, onSignOut }) => {
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminData, setView, onRefresh, onSignOut, onLoginSuccess }) => {
   const [activeTab, setActiveTab] = useState<'records' | 'services'>('records');
   const [services, setServices] = useState<Service[]>([]);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return sessionStorage.getItem('admin_authenticated') === 'true';
+  });
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
 
   // HARDCODED ADMIN CREDENTIALS (As requested: "username and password which will be set in the admin dashboard component")
   const ADMIN_USERNAME = "admin";
   const ADMIN_PASSWORD = "password123";
 
+  // Helper component for labels
+  const Label = ({ children }: { children: React.ReactNode }) => (
+    <label className="text-[10px] uppercase tracking-widest font-bold text-black/40 ml-4">
+      {children}
+    </label>
+  );
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (loginForm.username === ADMIN_USERNAME && loginForm.password === ADMIN_PASSWORD) {
+    const trimmedUsername = loginForm.username.trim();
+    const trimmedPassword = loginForm.password.trim();
+
+    if (trimmedUsername === ADMIN_USERNAME && trimmedPassword === ADMIN_PASSWORD) {
       setIsAuthenticated(true);
+      sessionStorage.setItem('admin_authenticated', 'true');
+      onLoginSuccess?.(true, 'admin');
     } else {
-      alert("Invalid credentials. Please contact developer.");
+      alert(`Invalid access key. Please use username "${ADMIN_USERNAME}" and password "${ADMIN_PASSWORD}".`);
     }
   };
 
@@ -198,6 +213,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminData, setVi
 
   const handleSignOut = () => {
     setIsAuthenticated(false);
+    sessionStorage.removeItem('admin_authenticated');
     setLoginForm({ username: '', password: '' });
     onSignOut();
   };
