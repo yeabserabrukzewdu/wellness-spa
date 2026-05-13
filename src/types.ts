@@ -24,8 +24,8 @@ export interface Service {
   duration: string;
   category: string;
   description: string;
-  imageUrl?: string;
-  videoUrl?: string;
+  image_url?: string;
+  video_url?: string;
 }
 
 export interface AdminData {

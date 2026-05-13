@@ -71,13 +71,13 @@ export const Gallery: React.FC = () => {
               viewport={{ once: true }}
               transition={{ delay: i * 0.1, duration: 0.8 }}
               className="aspect-[9/16] bg-[#F5F5F0] rounded-[2rem] overflow-hidden shadow-sm group relative cursor-pointer"
-              onClick={() => item.videoUrl && togglePlay(item.id)}
+              onClick={() => item.video_url && togglePlay(item.id)}
             >
-              {item.videoUrl ? (
+              {item.video_url ? (
                 <div className="w-full h-full relative">
                   <video 
-                    ref={(el) => (videoRefs.current[item.id] = el)}
-                    src={item.videoUrl} 
+                    ref={(el) => { videoRefs.current[item.id] = el; }}
+                    src={item.video_url} 
                     className={`w-full h-full object-cover transition-all duration-1000 ${playingId === item.id ? 'opacity-100 scale-105' : 'opacity-0'}`}
                     loop 
                     muted={false} // User probably wants sound if they play it manually
@@ -88,7 +88,7 @@ export const Gallery: React.FC = () => {
                   
                   {/* Placeholder Image Overlay */}
                   <img 
-                    src={item.imageUrl} 
+                    src={item.image_url} 
                     alt={item.type}
                     className={`absolute inset-0 w-full h-full object-cover transition-all duration-1000 ${playingId === item.id ? 'opacity-0 pointer-events-none' : 'opacity-80 group-hover:opacity-100 group-hover:scale-105'}`}
                     referrerPolicy="no-referrer"
@@ -107,7 +107,7 @@ export const Gallery: React.FC = () => {
                 </div>
               ) : (
                 <img 
-                  src={item.imageUrl} 
+                  src={item.image_url} 
                   alt={item.type}
                   className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-all duration-1000 group-hover:scale-105"
                   referrerPolicy="no-referrer"

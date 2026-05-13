@@ -69,7 +69,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminData, setVi
         .from('images')
         .getPublicUrl(filePath);
       
-      setEditingService({ ...editingService, imageUrl: publicUrl });
+      setEditingService({ ...editingService, image_url: publicUrl });
     } catch (err) {
       console.error("Upload failed", err);
       alert("Upload failed. Make sure you have a bucket named 'images' in Supabase.");
@@ -96,7 +96,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminData, setVi
         duration: editingService.duration,
         category: editingService.category,
         description: editingService.description,
-        imageUrl: editingService.imageUrl || ''
+        image_url: editingService.image_url || ''
       };
 
       if (editingService.id) {
@@ -207,10 +207,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminData, setVi
                   }}
                   className="bg-white border border-black/10 px-6 py-3 rounded-xl text-[10px] uppercase tracking-widest font-bold hover:bg-black/5 transition-all"
                 >
-                  Seed Services
+                  seed Services
                 </button>
                 <button 
-                  onClick={() => setEditingService({ name: '', price: 0, duration: '', category: 'Massages', description: '', imageUrl: '' })}
+                  onClick={() => setEditingService({ name: '', price: 0, duration: '', category: 'Massages', description: '', image_url: '' })}
                   className="bg-[#5A5A40] text-white px-8 py-3 rounded-xl text-[10px] uppercase tracking-widest font-bold shadow-lg hover:brightness-110 transition-all flex items-center gap-2"
                 >
                   <Plus className="w-4 h-4" /> Add New Service
@@ -321,28 +321,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminData, setVi
                             className="absolute inset-0 opacity-0 cursor-pointer z-10"
                           />
                           <div className={`w-full border-2 border-dashed rounded-2xl p-4 text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-3 transition-all ${isUploading ? 'bg-black/5 border-black/5 text-black/20' : 'bg-black/5 border-black/10 text-black/40 hover:bg-black/10'}`}>
-                            {isUploading ? (
+                             {isUploading ? (
                               <div className="w-4 h-4 border-2 border-[#5A5A40] border-t-transparent rounded-full animate-spin" />
                             ) : (
                               <ImageIcon className="w-4 h-4" />
                             )}
-                            {editingService.imageUrl ? 'Change Image File' : 'Select From Local Storage'}
+                            {editingService.image_url ? 'Change Image File' : 'Select From Local Storage'}
                           </div>
                         </div>
                         <div className="w-16 h-16 bg-black/5 rounded-2xl flex items-center justify-center overflow-hidden border border-black/5 shadow-inner">
-                          {editingService.imageUrl ? (
-                            <img src={editingService.imageUrl} className="w-full h-full object-cover" alt="Preview" />
+                          {editingService.image_url ? (
+                            <img src={editingService.image_url} className="w-full h-full object-cover" alt="Preview" />
                           ) : (
                             <ImageIcon className="w-6 h-6 text-black/10" />
                           )}
                         </div>
                       </div>
                       <div className="flex justify-between items-center px-2">
-                        <p className="text-[9px] text-black/30 font-medium italic">Saved in: {editingService.imageUrl || '/public/uploads'}</p>
-                        {editingService.imageUrl && (
+                        <p className="text-[9px] text-black/30 font-medium italic">Saved in: {editingService.image_url || '/public/uploads'}</p>
+                        {editingService.image_url && (
                           <button 
                             type="button"
-                            onClick={() => setEditingService({...editingService, imageUrl: ''})}
+                            onClick={() => setEditingService({...editingService, image_url: ''})}
                             className="text-[9px] text-red-400 hover:text-red-600 font-bold uppercase tracking-widest"
                           >
                             Remove
@@ -517,8 +517,8 @@ const ServicesSection = ({ services, onEdit, onDelete }: { services: Service[], 
             className="bg-white rounded-[32px] overflow-hidden group border border-transparent hover:border-[#5A5A40]/10 hover:shadow-2xl hover:shadow-black/5 transition-all"
           >
             <div className="aspect-[4/3] bg-black/5 relative overflow-hidden">
-              {s.imageUrl && (
-                <img src={s.imageUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" />
+              {s.image_url && (
+                <img src={s.image_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" />
               )}
               <div className="absolute top-4 left-4">
                 <span className="px-3 py-1 bg-black/40 backdrop-blur-md text-white rounded-lg text-[8px] uppercase tracking-widest font-bold">

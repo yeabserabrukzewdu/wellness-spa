@@ -133,7 +133,7 @@ export const Header: React.FC<HeaderProps> = ({ isMobileMenuOpen, setIsMobileMen
                       >
                         <div className="flex items-center gap-4">
                           <div className="w-12 h-12 rounded-xl bg-white overflow-hidden shadow-sm">
-                            <img src={service.imageUrl} className="w-full h-full object-cover" alt="" />
+                            <img src={service.image_url} className="w-full h-full object-cover" alt="" />
                           </div>
                           <div>
                             <p className="text-sm font-bold">{service.name}</p>

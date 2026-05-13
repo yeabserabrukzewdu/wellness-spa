@@ -99,15 +99,15 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, index, onReserve }) 
       className="group"
     >
       <div className="relative aspect-[4/5] rounded-[2rem] overflow-hidden mb-6 bg-[#F5F5F0]">
-        {service.videoUrl ? (
+        {service.video_url ? (
            <video 
-             src={service.videoUrl} 
+             src={service.video_url} 
              className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity duration-500"
              autoPlay muted loop playsInline
            />
         ) : (
           <img 
-            src={service.imageUrl || `https://picsum.photos/seed/${service.name}/800/1000`} 
+            src={service.image_url || `https://picsum.photos/seed/${service.name}/800/1000`} 
             alt={service.name}
             className="w-full h-full object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-110 opacity-90 group-hover:opacity-100"
             referrerPolicy="no-referrer"
@@ -115,7 +115,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, index, onReserve }) 
         )}
         
         {/* Play Icon if video exists */}
-        {service.videoUrl && (
+        {service.video_url && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none group-hover:opacity-0 transition-opacity duration-500">
              <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30">
                <Play className="w-5 h-5 text-white fill-white ml-0.5" />
