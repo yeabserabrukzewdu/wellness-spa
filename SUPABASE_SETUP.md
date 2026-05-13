@@ -78,6 +78,7 @@ CREATE POLICY "Admins can manage all appointments" ON appointments FOR ALL USING
 ## 4. Environment Variables
 Add your Supabase URL and Anon Key to your `.env` file (or Vercel environment variables):
 - `VITE_SUPABASE_URL`: Found in **Settings > API > Project URL**
+  - **IMPORTANT**: It should look like `https://xyz.supabase.co`. Do **NOT** include `/rest/v1` or a trailing slash.
 - `VITE_SUPABASE_ANON_KEY`: Found in **Settings > API > Project API keys > anon (public)**
 
 ## 5. Authentication

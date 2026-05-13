@@ -11,17 +11,24 @@ const rawKey = getEnvVar('VITE_SUPABASE_ANON_KEY');
 const isValidUrl = (url: string) => {
   if (!url) return false;
   try {
-    new URL(url);
-    return true;
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
   } catch {
     return false;
   }
 };
 
-const supabaseUrl = isValidUrl(rawUrl) ? rawUrl : 'https://placeholder-project.supabase.co';
+// Sanitize URL: Remove any trailing /rest/v1/ or similar if the user accidentally included it
+const sanitizeUrl = (url: string) => {
+  if (!url) return url;
+  return url.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
+};
+
+const sanitizedUrl = sanitizeUrl(rawUrl);
+const supabaseUrl = isValidUrl(sanitizedUrl) ? sanitizedUrl : 'https://placeholder-project.supabase.co';
 const supabaseAnonKey = rawKey || 'placeholder-key';
 
-if (!rawUrl || !isValidUrl(rawUrl)) {
+if (!rawUrl || !isValidUrl(sanitizedUrl)) {
   console.warn(
     'Supabase URL is missing or invalid. Please set VITE_SUPABASE_URL in your environment variables (e.g., https://xyz.supabase.co).'
   );

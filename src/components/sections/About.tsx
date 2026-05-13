@@ -14,9 +14,9 @@ export const About: React.FC = () => {
         >
           <div className="aspect-square bg-[#5A5A40] rounded-[60px] overflow-hidden rotate-3">
             <img 
-              src="/about/spa-interior.jpg" 
+              src="https://images.unsplash.com/photo-1540555700478-4be289aefcc9?q=80&w=800" 
               alt="Spa Interior"
-              className="w-full h-full object-cover opacity-60 -rotate-3 scale-110"
+              className="w-full h-full object-cover opacity-80 -rotate-3 scale-110"
               referrerPolicy="no-referrer"
             />
           </div>
